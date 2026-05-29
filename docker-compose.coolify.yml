@@ -1,6 +1,6 @@
 services:
   openclaw-gateway:
-    image: ghcr.io/huuluong6768-jpg/openclaw:latest
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     environment:
       HOME: /home/node
       OPENCLAW_HOME: /home/node
@@ -13,7 +13,7 @@ services:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: ${OPENCLAW_ALLOW_INSECURE_PRIVATE_WS:-}
       OPENCLAW_DISABLE_BONJOUR: ${OPENCLAW_DISABLE_BONJOUR:-1}
-      TZ: ${OPENCLAW_TZ:-Asia/Ho_Chi_Minh}
+      TZ: ${OPENCLAW_TZ:-UTC}
     volumes:
       - openclaw-config:/home/node/.openclaw
       - openclaw-workspace:/home/node/.openclaw/workspace

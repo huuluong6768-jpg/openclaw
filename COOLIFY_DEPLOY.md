@@ -1,85 +1,88 @@
-# Deploy OpenClaw lên Coolify (Build trên GitHub Actions)
+# Deploy OpenClaw to Coolify (Build on GitHub Actions)
 
-Hướng dẫn deploy OpenClaw lên Coolify server, build Docker image trên GitHub Actions để giảm tải cho server.
+Guide to deploy OpenClaw on a Coolify server, building Docker images on GitHub Actions to keep the server lightweight.
 
-## Kiến trúc
+## Architecture
 
 ```
-GitHub Actions (build image) --> GHCR (lưu image) --> Coolify (pull & run)
+GitHub Actions (build image) --> GHCR (store image) --> Coolify (pull & run)
 ```
 
-- **GitHub Actions** build Docker image mỗi khi push code lên `main`
-- Image được push lên **GitHub Container Registry (GHCR)**
-- **Coolify** pull image từ GHCR và chạy trên server
+- **GitHub Actions** builds a Docker image on every push to `main`
+- The image is pushed to **GitHub Container Registry (GHCR)**
+- **Coolify** pulls the pre-built image from GHCR and runs it on your server
 
-## Bước 1: Cấu hình GitHub Repository
+## Step 1: Configure the GitHub Repository
 
-### 1.1. Cho phép GitHub Actions push packages
+### 1.1. Allow GitHub Actions to push packages
 
-Vào repo Settings > Actions > General:
-- Đảm bảo "Read and write permissions" được bật trong Workflow permissions
+Go to repo Settings > Actions > General:
+- Enable "Read and write permissions" under Workflow permissions
 
-Vào repo Settings > Packages:
-- Đảm bảo package visibility phù hợp (public hoặc private)
+Go to repo Settings > Packages:
+- Set package visibility as needed (public or private)
 
-### 1.2. Trigger build lần đầu
+### 1.2. Trigger the first build
 
-Push code lên branch `main` hoặc vào tab **Actions** > chọn workflow **"Build & Push Docker Image"** > **Run workflow**.
+Push code to the `main` branch, or go to the **Actions** tab > select the **"Build & Push Docker Image"** workflow > **Run workflow**.
 
-Image sẽ được push lên: `ghcr.io/huuluong6768-jpg/openclaw:latest`
+The image will be pushed to: `ghcr.io/<your-github-username>/openclaw:latest`
 
-## Bước 2: Cấu hình Coolify
+## Step 2: Configure Coolify
 
-### 2.1. Tạo project mới trên Coolify
+### 2.1. Create a new project on Coolify
 
-1. Đăng nhập Coolify dashboard
-2. Tạo **New Project** > đặt tên (vd: `openclaw`)
-3. Chọn environment (vd: `production`)
+1. Log in to the Coolify dashboard
+2. Create a **New Project** and name it (e.g., `openclaw`)
+3. Select an environment (e.g., `production`)
 
-### 2.2. Thêm service Docker Compose
+### 2.2. Add a Docker Compose service
 
-1. Trong project, chọn **+ Add New Resource**
-2. Chọn **Docker Compose**
-3. Paste nội dung file `docker-compose.coolify.yml` vào editor
+1. In the project, click **+ Add New Resource**
+2. Select **Docker Compose**
+3. Paste the contents of `docker-compose.coolify.yml` into the editor
 
-### 2.3. Cấu hình environment variables
+### 2.3. Configure environment variables
 
-Trong Coolify, thêm các environment variables sau:
+In Coolify, add the following environment variables:
 
 ```env
-# Token bảo mật cho gateway (bắt buộc)
+# Image to pull (required — set to your fork's GHCR image)
+OPENCLAW_IMAGE=ghcr.io/<your-github-username>/openclaw:latest
+
+# Security token for the gateway (required)
 OPENCLAW_GATEWAY_TOKEN=your-secret-token-here
 
-# Timezone
-OPENCLAW_TZ=Asia/Ho_Chi_Minh
+# Timezone (default: UTC)
+OPENCLAW_TZ=UTC
 
-# Port (mặc định 18789)
+# Port (default: 18789)
 OPENCLAW_GATEWAY_PORT=18789
 ```
 
-### 2.4. Cấu hình domain/proxy (tùy chọn)
+### 2.4. Configure domain/proxy (optional)
 
-Trong Coolify, bạn có thể cấu hình:
-- **Domain**: Gán domain cho service (vd: `openclaw.yourdomain.com`)
-- **SSL**: Coolify tự động cấp SSL qua Let's Encrypt
-- **Proxy port**: Trỏ đến port `18789` của container
+In Coolify, you can configure:
+- **Domain**: Assign a domain to the service (e.g., `openclaw.yourdomain.com`)
+- **SSL**: Coolify automatically provisions SSL via Let's Encrypt
+- **Proxy port**: Point to port `18789` of the container
 
-## Bước 3: Auto-deploy khi có image mới
+## Step 3: Auto-deploy on new image push
 
-### Cách 1: Webhook (khuyên dùng)
+### Option 1: Webhook (recommended)
 
-1. Trong Coolify, copy **Webhook URL** của resource
-2. Trong GitHub repo, vào Settings > Webhooks > Add webhook
-3. Paste Coolify webhook URL
-4. Chọn event: `Packages` hoặc `Workflow runs`
+1. In Coolify, copy the **Webhook URL** of the resource
+2. In the GitHub repo, go to Settings > Webhooks > Add webhook
+3. Paste the Coolify webhook URL
+4. Select event: `Packages` or `Workflow runs`
 
-### Cách 2: Polling
+### Option 2: Polling
 
-Trong Coolify resource settings, bật **Check for updates** với interval phù hợp (vd: 5 phút).
+In Coolify resource settings, enable **Check for updates** with an appropriate interval (e.g., 5 minutes).
 
-### Cách 3: Thêm step deploy vào GitHub Actions
+### Option 3: Add a deploy step to GitHub Actions
 
-Thêm step sau vào cuối workflow `.github/workflows/build-and-push.yml`:
+Add the following step to the end of the `.github/workflows/build-and-push.yml` workflow:
 
 ```yaml
       - name: Trigger Coolify deploy
@@ -88,9 +91,9 @@ Thêm step sau vào cuối workflow `.github/workflows/build-and-push.yml`:
           curl -s "${{ secrets.COOLIFY_WEBHOOK_URL }}"
 ```
 
-Sau đó thêm secret `COOLIFY_WEBHOOK_URL` trong repo Settings > Secrets > Actions.
+Then add the `COOLIFY_WEBHOOK_URL` secret in repo Settings > Secrets and variables > Actions.
 
-## Bước 4: Kiểm tra deployment
+## Step 4: Verify the deployment
 
 ### Health check
 
@@ -98,22 +101,22 @@ Sau đó thêm secret `COOLIFY_WEBHOOK_URL` trong repo Settings > Secrets > Acti
 curl https://openclaw.yourdomain.com/healthz
 ```
 
-### Xem logs trên Coolify
+### View logs on Coolify
 
-Trong Coolify dashboard > chọn resource > tab **Logs**.
+In the Coolify dashboard, select the resource and go to the **Logs** tab.
 
-## Cấu hình nâng cao
+## Advanced configuration
 
-### Thêm extensions
+### Add extensions
 
-Sửa `build-args` trong `.github/workflows/build-and-push.yml`:
+Edit `build-args` in `.github/workflows/build-and-push.yml`:
 
 ```yaml
           build-args: |
             OPENCLAW_EXTENSIONS=telegram,discord,slack
 ```
 
-### Thêm browser automation
+### Add browser automation
 
 ```yaml
           build-args: |
@@ -122,28 +125,28 @@ Sửa `build-args` trong `.github/workflows/build-and-push.yml`:
 
 ### Multi-architecture (amd64 + arm64)
 
-Nếu server chạy ARM, thêm `linux/arm64` vào platforms:
+If your server runs ARM, add `linux/arm64` to platforms:
 
 ```yaml
           platforms: linux/amd64,linux/arm64
 ```
 
-> Lưu ý: Build multi-arch sẽ lâu hơn đáng kể.
+> Note: Multi-arch builds take significantly longer.
 
 ## Troubleshooting
 
 ### Image pull failed
 
-- Kiểm tra package visibility: repo Settings > Packages
-- Nếu private, cần thêm GHCR credentials trong Coolify
+- Check package visibility: repo Settings > Packages
+- If private, add GHCR credentials in Coolify
 
 ### Container crash/restart loop
 
-- Kiểm tra logs trong Coolify
-- Đảm bảo `OPENCLAW_GATEWAY_TOKEN` đã được set
-- Kiểm tra memory: OpenClaw cần tối thiểu 512MB RAM
+- Check logs in Coolify
+- Ensure `OPENCLAW_GATEWAY_TOKEN` is set
+- Check memory: OpenClaw requires at least 512 MB RAM
 
-### Build failed trên GitHub Actions
+### Build failed on GitHub Actions
 
-- Kiểm tra tab Actions trong repo
-- Đảm bảo Dockerfile không bị modify sai
+- Check the Actions tab in the repo
+- Ensure the Dockerfile has not been incorrectly modified

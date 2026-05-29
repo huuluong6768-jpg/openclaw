@@ -225,7 +225,7 @@
       - any-glob-to-any-file:
           - "Dockerfile"
           - "Dockerfile.*"
-          - "docker-compose.yml"
+          - "docker-compose*.yml"
           - ".dockerignore"
           - "deploy/fly.private.toml"
           - "scripts/docker/setup.sh"
